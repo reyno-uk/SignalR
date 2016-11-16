@@ -91,7 +91,7 @@
   },
 
   "scripts": {
-    "precompile": [ "dotnet bundle", "tsc --project ../../src/Microsoft.AspNetCore.SignalR.Client.TS/ --out wwwroot/js/signalr-client.js" ],
+    "precompile": [ "dotnet bundle", "tsc --project ../../src/Microsoft.AspNetCore.SignalR.Client.TS/ --outDir wwwroot/lib/signalr-client/ --module amd" ],
     "prepublish": [ "bower install" ],
     "postpublish": [ "dotnet publish-iis --publish-folder %publish:OutputPath% --framework %publish:FullTargetFramework%" ]
   }
