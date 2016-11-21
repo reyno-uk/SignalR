@@ -157,16 +157,11 @@ namespace Microsoft.AspNetCore.SignalR
                 created = true;
             }
 
-            InitializeHub(connection, hub);
-
-            return hub;
-        }
-
-        private void InitializeHub(Connection connection, THub hub)
-        {
             hub.Clients = _hubContext.Clients;
             hub.Context = new HubCallerContext(connection);
             hub.Groups = new GroupManager<THub>(connection, _lifetimeManager);
+
+            return hub;
         }
 
         private void DiscoverHubMethods()
