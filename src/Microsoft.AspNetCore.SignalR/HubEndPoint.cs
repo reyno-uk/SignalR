@@ -63,9 +63,16 @@ namespace Microsoft.AspNetCore.SignalR
 
                 using (var scope = _serviceScopeFactory.CreateScope())
                 {
-                    var hub = scope.ServiceProvider.GetService<THub>() ?? Activator.CreateInstance<THub>();
-                    InitializeHub(connection, hub);
+                    bool created;
+                    var hub = CreateHub(scope.ServiceProvider, connection, out created);
+
                     await hub.OnConnectedAsync();
+
+                    if (created)
+                    {
+                        // Dispose the object if it's disposable and we created it
+                        (hub as IDisposable)?.Dispose();
+                    }
                 }
 
                 await DispatchMessagesAsync(connection);
@@ -74,9 +81,16 @@ namespace Microsoft.AspNetCore.SignalR
             {
                 using (var scope = _serviceScopeFactory.CreateScope())
                 {
-                    var hub = scope.ServiceProvider.GetService<THub>() ?? Activator.CreateInstance<THub>();
-                    InitializeHub(connection, hub);
+                    bool created;
+                    var hub = CreateHub(scope.ServiceProvider, connection, out created);
+
                     await hub.OnDisconnectedAsync();
+
+                    if (created)
+                    {
+                        // Dispose the object if it's disposable and we created it
+                        (hub as IDisposable)?.Dispose();
+                    }
                 }
 
                 await _lifetimeManager.OnDisconnectedAsync(connection);
@@ -132,6 +146,22 @@ namespace Microsoft.AspNetCore.SignalR
             }
         }
 
+        private THub CreateHub(IServiceProvider provider, Connection connection, out bool created)
+        {
+            var hub = provider.GetService<THub>();
+            created = false;
+
+            if (hub == null)
+            {
+                hub = Activator.CreateInstance<THub>();
+                created = true;
+            }
+
+            InitializeHub(connection, hub);
+
+            return hub;
+        }
+
         private void InitializeHub(Connection connection, THub hub)
         {
             hub.Clients = _hubContext.Clients;
@@ -169,17 +199,8 @@ namespace Microsoft.AspNetCore.SignalR
 
                     using (var scope = _serviceScopeFactory.CreateScope())
                     {
-                        var hub = scope.ServiceProvider.GetService<THub>();
-
-                        bool created = false;
-
-                        if (hub == null)
-                        {
-                            hub = Activator.CreateInstance<THub>();
-                            created = true;
-                        }
-
-                        InitializeHub(connection, hub);
+                        bool created;
+                        var hub = CreateHub(scope.ServiceProvider, connection, out created);
 
                         try
                         {
