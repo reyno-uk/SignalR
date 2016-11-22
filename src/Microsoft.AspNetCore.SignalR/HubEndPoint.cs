@@ -27,8 +27,8 @@ namespace Microsoft.AspNetCore.SignalR
 
     public class HubEndPoint<THub, TClient> : EndPoint where THub : Hub<TClient>
     {
-        private readonly Dictionary<string, Func<Connection, InvocationDescriptor, Task<InvocationResultDescriptor>>> _callbacks
-            = new Dictionary<string, Func<Connection, InvocationDescriptor, Task<InvocationResultDescriptor>>>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Func<HubConnection, InvocationDescriptor, Task<InvocationResultDescriptor>>> _callbacks
+            = new Dictionary<string, Func<HubConnection, InvocationDescriptor, Task<InvocationResultDescriptor>>>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, Type[]> _paramTypes = new Dictionary<string, Type[]>();
 
         private readonly HubLifetimeManager<THub> _lifetimeManager;
@@ -57,36 +57,38 @@ namespace Microsoft.AspNetCore.SignalR
             // TODO: Dispatch from the caller
             await Task.Yield();
 
+            var hubConnection = new HubConnection(connection, _registry);
+
             try
             {
-                await _lifetimeManager.OnConnectedAsync(connection);
+                await _lifetimeManager.OnConnectedAsync(hubConnection);
 
                 using (var scope = _serviceScopeFactory.CreateScope())
                 {
                     var hub = scope.ServiceProvider.GetService<THub>() ?? Activator.CreateInstance<THub>();
-                    InitializeHub(connection, hub);
+                    InitializeHub(hubConnection, hub);
                     await hub.OnConnectedAsync();
                 }
 
-                await DispatchMessagesAsync(connection);
+                await DispatchMessagesAsync(hubConnection);
             }
             finally
             {
                 using (var scope = _serviceScopeFactory.CreateScope())
                 {
                     var hub = scope.ServiceProvider.GetService<THub>() ?? Activator.CreateInstance<THub>();
-                    InitializeHub(connection, hub);
+                    InitializeHub(hubConnection, hub);
                     await hub.OnDisconnectedAsync();
                 }
 
-                await _lifetimeManager.OnDisconnectedAsync(connection);
+                await _lifetimeManager.OnDisconnectedAsync(hubConnection);
             }
         }
 
-        private async Task DispatchMessagesAsync(Connection connection)
+        private async Task DispatchMessagesAsync(HubConnection hubConnection)
         {
-            var stream = connection.Channel.GetStream();
-            var invocationAdapter = _registry.GetInvocationAdapter(connection.Metadata.Get<string>("formatType"));
+            var stream = hubConnection.Stream;
+            var invocationAdapter = _registry.GetInvocationAdapter(hubConnection.Metadata.Get<string>("formatType"));
 
             while (true)
             {
@@ -111,10 +113,10 @@ namespace Microsoft.AspNetCore.SignalR
                 }
 
                 InvocationResultDescriptor result;
-                Func<Connection, InvocationDescriptor, Task<InvocationResultDescriptor>> callback;
+                Func<HubConnection, InvocationDescriptor, Task<InvocationResultDescriptor>> callback;
                 if (_callbacks.TryGetValue(invocationDescriptor.Method, out callback))
                 {
-                    result = await callback(connection, invocationDescriptor);
+                    result = await callback(hubConnection, invocationDescriptor);
                 }
                 else
                 {
@@ -128,15 +130,15 @@ namespace Microsoft.AspNetCore.SignalR
                     _logger.LogError("Unknown hub method '{method}'", invocationDescriptor.Method);
                 }
 
-                await invocationAdapter.WriteInvocationResultAsync(result, stream);
+                await hubConnection.Enqueue(() => invocationAdapter.WriteInvocationResultAsync(result, stream));
             }
         }
 
-        private void InitializeHub(Connection connection, THub hub)
+        private void InitializeHub(HubConnection hubConnection, THub hub)
         {
             hub.Clients = _hubContext.Clients;
-            hub.Context = new HubCallerContext(connection);
-            hub.Groups = new GroupManager<THub>(connection, _lifetimeManager);
+            hub.Context = new HubCallerContext(hubConnection);
+            hub.Groups = new GroupManager<THub>(hubConnection, _lifetimeManager);
         }
 
         private void DiscoverHubMethods()
@@ -160,7 +162,7 @@ namespace Microsoft.AspNetCore.SignalR
                     _logger.LogDebug("Hub method '{methodName}' is bound", methodName);
                 }
 
-                _callbacks[methodName] = async (connection, invocationDescriptor) =>
+                _callbacks[methodName] = async (hubConnection, invocationDescriptor) =>
                 {
                     var invocationResult = new InvocationResultDescriptor()
                     {
@@ -179,7 +181,7 @@ namespace Microsoft.AspNetCore.SignalR
                             created = true;
                         }
 
-                        InitializeHub(connection, hub);
+                        InitializeHub(hubConnection, hub);
 
                         try
                         {
