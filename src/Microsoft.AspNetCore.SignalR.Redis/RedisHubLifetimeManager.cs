@@ -281,27 +281,9 @@ namespace Microsoft.AspNetCore.SignalR.Redis
             // BAD
             using (var ms = new MemoryStream(data))
             {
-                var reader = new JsonTextReader(new StreamReader(ms));
-                var serializer = new JsonSerializer();
-                var hubInvocation = serializer.Deserialize<HubInvocation>(reader);
-
-                // TODO
-                await connection.InvokeAsync(hubInvocation.Method, hubInvocation.Args);
+                await connection.InvokeClientAsync(data.ToArray());
             }
         }
-
-        private class HubInvocation
-        {
-            [JsonProperty("H")]
-            public string Hub { get; set; }
-            [JsonProperty("Method")]
-            public string Method { get; set; }
-            [JsonProperty("I")]
-            public string Id { get; set; }
-            [JsonProperty("Arguments")]
-            public JValue[] Args { get; set; }
-        }
-
 
         private class LoggerTextWriter : TextWriter
         {
