@@ -5,16 +5,12 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Pipelines;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Sockets;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using StackExchange.Redis;
 
 namespace Microsoft.AspNetCore.SignalR.Redis
@@ -275,9 +271,6 @@ namespace Microsoft.AspNetCore.SignalR.Redis
 
         private async Task InvokeAsync(HubConnection connection, byte[] data)
         {
-            // TODO: What format??
-            var invocationAdapter = _registry.GetInvocationAdapter("json");
-
             // BAD
             using (var ms = new MemoryStream(data))
             {
