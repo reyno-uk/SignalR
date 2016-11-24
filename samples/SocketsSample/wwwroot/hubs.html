@@ -51,113 +51,112 @@
     <ul id="messages"></ul>
 </body>
 </html>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.2/require.js"></script>
+<script src="js/signalr-client/signalr-client.js"></script>
 <script>
-require(["../lib/signalr-client/RpcConnection"], function(signalR) {
-    var isConnected = false;
-    function getParameterByName(name, url) {
-        if (!url) {
-            url = window.location.href;
-        }
-        name = name.replace(/[\[\]]/g, "\\$&");
-        var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
-            results = regex.exec(url);
-        if (!results) return null;
-        if (!results[2]) return '';
-        return decodeURIComponent(results[2].replace(/\+/g, " "));
+var isConnected = false;
+function getParameterByName(name, url) {
+    if (!url) {
+        url = window.location.href;
     }
+    name = name.replace(/[\[\]]/g, "\\$&");
+    var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+        results = regex.exec(url);
+    if (!results) return null;
+    if (!results[2]) return '';
+    return decodeURIComponent(results[2].replace(/\+/g, " "));
+}
 
-    function click(id, callback) {
-        document.getElementById(id).addEventListener('click', event => {
-            callback(event);
-            event.preventDefault();
-        });
-    }
-
-    function invoke(connection, method, ...args) {
-        if (!isConnected) {
-            return;
-        }
-        var argsArray = Array.prototype.slice.call(arguments);
-        connection.invoke.apply(connection, argsArray.slice(1))
-                .then(result => {
-                    console.log("invocation completed successfully: " + (result === null ? '(null)' : result));
-
-                    if (result) {
-                        addLine(result);
-                    }
-                })
-                .catch(err => {
-                    addLine(err, 'red');
-                });
-    }
-
-    function getText(id) {
-        return document.getElementById(id).value;
-    }
-
-    function addLine(line, color) {
-        var child = document.createElement('li');
-        if (color) {
-            child.style.color = color;
-        }
-        child.innerText = line;
-        document.getElementById('messages').appendChild(child);
-    }
-
-    let transport = getParameterByName('transport') || 'webSockets';
-
-    document.getElementById('head1').innerHTML = transport;
-
-    let connection = new signalR.RpcConnection(`http://${document.location.host}/hubs`, 'formatType=json&format=text');
-    connection.on('Send', msg => {
-        addLine(msg);
+function click(id, callback) {
+    document.getElementById(id).addEventListener('click', event => {
+        callback(event);
+        event.preventDefault();
     });
+}
 
-    connection.connectionClosed = e => {
-        if (e) {
-            addLine('Connection closed with error: ' + e, 'red');
-        }
-        else {
-            addLine('Disconnected', 'green');
-        }
+function invoke(connection, method, ...args) {
+    if (!isConnected) {
+        return;
     }
+    var argsArray = Array.prototype.slice.call(arguments);
+    connection.invoke.apply(connection, argsArray.slice(1))
+            .then(result => {
+                console.log("invocation completed successfully: " + (result === null ? '(null)' : result));
 
-    click('connect', event => {
-        connection.start(transport)
-            .then(() => {
-                isConnected = true;
-                addLine('Connected successfully', 'green');
+                if (result) {
+                    addLine(result);
+                }
             })
-        .catch(err => {
-            addLine(err, 'red');
-        });
-    });
+            .catch(err => {
+                addLine(err, 'red');
+            });
+}
 
-    click('disconnect', event => {
-        connection.stop();
-        isConnected = false;
-    });
+function getText(id) {
+    return document.getElementById(id).value;
+}
 
-    click('broadcast', event => {
-        let data = getText('msg');
-        invoke(connection, 'SocketsSample.Hubs.Chat.Send', data);
-    });
+function addLine(line, color) {
+    var child = document.createElement('li');
+    if (color) {
+        child.style.color = color;
+    }
+    child.innerText = line;
+    document.getElementById('messages').appendChild(child);
+}
 
-    click('join-group', event => {
-        let groupName = getText('msg');
-        invoke(connection, 'SocketsSample.Hubs.Chat.JoinGroup', groupName);
-    });
+let transport = getParameterByName('transport') || 'webSockets';
 
-    click('leave-group', event => {
-        let groupName = getText('msg');
-        invoke(connection, 'SocketsSample.Hubs.Chat.LeaveGroup', groupName);
-    });
+document.getElementById('head1').innerHTML = transport;
 
-    click('groupmsg', event => {
-        let groupName = getText('target');
-        let message = getText('message');
-        invoke(connection, 'SocketsSample.Hubs.Chat.SendToGroup', groupName, message);
+let connection = new signalR.RpcConnection(`http://${document.location.host}/hubs`, 'formatType=json&format=text');
+connection.on('Send', msg => {
+    addLine(msg);
+});
+
+connection.connectionClosed = e => {
+    if (e) {
+        addLine('Connection closed with error: ' + e, 'red');
+    }
+    else {
+        addLine('Disconnected', 'green');
+    }
+}
+
+click('connect', event => {
+    connection.start(transport)
+        .then(() => {
+            isConnected = true;
+            addLine('Connected successfully', 'green');
+        })
+    .catch(err => {
+        addLine(err, 'red');
     });
 });
+
+click('disconnect', event => {
+    connection.stop();
+    isConnected = false;
+});
+
+click('broadcast', event => {
+    let data = getText('msg');
+    invoke(connection, 'SocketsSample.Hubs.Chat.Send', data);
+});
+
+click('join-group', event => {
+    let groupName = getText('msg');
+    invoke(connection, 'SocketsSample.Hubs.Chat.JoinGroup', groupName);
+});
+
+click('leave-group', event => {
+    let groupName = getText('msg');
+    invoke(connection, 'SocketsSample.Hubs.Chat.LeaveGroup', groupName);
+});
+
+click('groupmsg', event => {
+    let groupName = getText('target');
+    let message = getText('message');
+    invoke(connection, 'SocketsSample.Hubs.Chat.SendToGroup', groupName, message);
+});
+
 </script>

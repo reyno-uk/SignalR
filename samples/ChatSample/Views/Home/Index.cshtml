@@ -12,30 +12,28 @@
         <input type="submit" id="send" value="Send" class="send" />
     </form>
 </div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.2/require.js"></script>
+<script src="lib/signalr-client/signalr-client.js"></script>
 <script>
-    require(["../lib/signalr-client/RpcConnection"], function(signalR) {
-        let connection = new signalR.RpcConnection(`http://${document.location.host}/chat`, 'formatType=json&format=text');
+let connection = new signalR.RpcConnection(`http://${document.location.host}/chat`, 'formatType=json&format=text');
 
-        connection.on('Send', function (message) {
-            var child = document.createElement('li');
-            child.innerText = message;
-            document.getElementById('messages').appendChild(child);
-        });
+connection.on('Send', function (message) {
+    var child = document.createElement('li');
+    child.innerText = message;
+    document.getElementById('messages').appendChild(child);
+});
 
-        connection.start();
+connection.start();
 
-        document.getElementById('sendmessage').addEventListener('submit', event => {
-            let data = document.getElementById('new-message').value;
+document.getElementById('sendmessage').addEventListener('submit', event => {
+    let data = document.getElementById('new-message').value;
 
-            connection.invoke('ChatSample.Hubs.Chat.Send', data, 'json').catch(err => {
-                var child = document.createElement('li');
-                child.style.color = 'red';
-                child.innerText = err;
-                document.getElementById('messages').appendChild(child);
-            });
-
-            event.preventDefault();
-        });
+    connection.invoke('ChatSample.Hubs.Chat.Send', data, 'json').catch(err => {
+        var child = document.createElement('li');
+        child.style.color = 'red';
+        child.innerText = err;
+        document.getElementById('messages').appendChild(child);
     });
+
+    event.preventDefault();
+});
 </script>
