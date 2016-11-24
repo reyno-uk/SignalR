@@ -44,7 +44,7 @@ namespace Microsoft.AspNetCore.SignalR
             return Enqueue(() => invocationAdapter.WriteInvocationDescriptorAsync(message, Stream));
         }
 
-        public Task InvokeClientAsync(byte[] data)
+        public Task WriteAsync(byte[] data)
         {
             return Enqueue(() => _connection.Channel.Output.WriteAsync(data));
         }

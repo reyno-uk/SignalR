@@ -48,7 +48,7 @@ namespace Microsoft.AspNetCore.SignalR.Redis
 
                 foreach (var connection in _connections)
                 {
-                    tasks.Add(InvokeAsync(connection.Value, data));
+                    tasks.Add(connection.Value.WriteAsync(data));
                 }
 
                 previousBroadcastTask = Task.WhenAll(tasks);
@@ -126,7 +126,7 @@ namespace Microsoft.AspNetCore.SignalR.Redis
 
             connectionTask = _bus.SubscribeAsync(connectionChannel, async (c, data) =>
             {
-                await InvokeAsync(connection, data);
+                await connection.WriteAsync(data);
             });
 
 
@@ -138,7 +138,7 @@ namespace Microsoft.AspNetCore.SignalR.Redis
                 // TODO: Look at optimizing (looping over connections checking for Name)
                 userTask = _bus.SubscribeAsync(userChannel, async (c, data) =>
                 {
-                    await InvokeAsync(connection, data);
+                    await connection.WriteAsync(data);
                 });
             }
 
@@ -212,7 +212,7 @@ namespace Microsoft.AspNetCore.SignalR.Redis
                     var tasks = new List<Task>(group.Connections.Count);
                     foreach (var groupConnection in group.Connections)
                     {
-                        tasks.Add(InvokeAsync(groupConnection.Value, data));
+                        tasks.Add(groupConnection.Value.WriteAsync(data));
                     }
 
                     previousTask = Task.WhenAll(tasks);
@@ -267,15 +267,6 @@ namespace Microsoft.AspNetCore.SignalR.Redis
         {
             _bus.UnsubscribeAll();
             _redisServerConnection.Dispose();
-        }
-
-        private async Task InvokeAsync(HubConnection connection, byte[] data)
-        {
-            // BAD
-            using (var ms = new MemoryStream(data))
-            {
-                await connection.InvokeClientAsync(data.ToArray());
-            }
         }
 
         private class LoggerTextWriter : TextWriter
