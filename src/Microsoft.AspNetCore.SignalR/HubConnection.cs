@@ -49,6 +49,11 @@ namespace Microsoft.AspNetCore.SignalR
             return Enqueue(() => _connection.Channel.Output.WriteAsync(data));
         }
 
+        public void Close()
+        {
+            _connection.Channel.Dispose();
+        }
+
         internal Task Enqueue(Func<Task> taskFactory)
         {
             lock (_lock)
